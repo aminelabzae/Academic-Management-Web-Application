@@ -1,14 +1,14 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'Professeurs')
 @section('subtitle', 'Gestion des professeurs')
 
 @section('actions')
     <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#importModal">
-        <i class="bi bi-file-earmark-excel me-2"></i> Importer Excel
+        <i class="bi bi-file-earmark-excel me-2"></i><span class="d-none d-md-inline">Importer Excel</span>
     </button>
     <a href="{{ route('admin.professeurs.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-circle me-2"></i> Nouveau professeur
+        <i class="bi bi-plus-circle me-2"></i><span class="d-none d-md-inline">Nouveau professeur</span>
     </a>
 @endsection
 
@@ -38,7 +38,7 @@
                         <th>Email</th>
                         <th>Téléphone</th>
                         <th>Spécialité</th>
-                        <th>Heures/mois</th>
+                        <th>Masse Horaire</th>
                         <th>Statut</th>
                         <th>Actions</th>
                     </tr>
@@ -55,16 +55,20 @@
                             <td>{{ $professeur->specialite ?? '-' }}</td>
                             <td>
                                 @php
-                                    $heuresActuelles = $professeur->getHeuresMensuellesActuelles();
-                                    $maxHeures = $professeur->max_heures_mensuel;
+                                    $heuresHebdo = $professeur->getHeuresHebdomadairesActuelles();
+                                    $heuresMensuelles = $heuresHebdo; // Synchronisation
+                                    $maxHeuresMensuel = $professeur->max_heures_mensuel;
                                 @endphp
-                                @if($maxHeures)
-                                    <span class="badge {{ $heuresActuelles >= $maxHeures ? 'bg-danger' : ($heuresActuelles >= $maxHeures * 0.7 ? 'bg-warning' : 'bg-info') }}">
-                                        {{ \App\Models\EmploiDuTemps::formatHeures($heuresActuelles) }} / {{ \App\Models\EmploiDuTemps::formatHeures($maxHeures) }}
+                                <div class="mb-1">
+                                    <span class="badge bg-primary">
+                                        {{ \App\Models\EmploiDuTemps::formatHeures($heuresHebdo) }} / mois
                                     </span>
-                                @else
-                                    <span class="text-muted">∞</span>
-                                @endif
+                                </div>
+                                <div class="small">
+                                    @if($maxHeuresMensuel)
+                                        <span class="text-info">Limite: {{ $maxHeuresMensuel }}h/mois</span>
+                                    @endif
+                                </div>
                             </td>
                             <td>
                                 @if($professeur->actif)
@@ -112,6 +116,36 @@
 </div>
 @endsection
 
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .select2-container { z-index: 1061 !important; } /* Fix Select2 inside Bootstrap modal */
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        background-color: var(--ofppt-blue);
+        color: white; border: none;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        if ($('#import_module_ids').length) {
+            $('#import_module_ids').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#importModal'),
+                width: '100%',
+                placeholder: 'Sélectionner des modules...',
+                closeOnSelect: false
+            });
+        }
+    });
+</script>
+@endpush
+
 {{-- Import Modal --}}
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -131,6 +165,39 @@
                         <div class="form-text mt-2 text-info">
                             <i class="bi bi-info-circle-fill me-1"></i>
                             Un compte utilisateur sera automatiquement créé pour chaque professeur.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="module_ids" class="form-label">Modules à assigner (Optionnel)</label>
+                        <select name="module_ids[]" id="import_module_ids" class="form-select" multiple>
+                            @php
+                                $groupedModules = collect();
+                                foreach($modules as $module) {
+                                    $modFilieres = $module->filieres ?? collect();
+                                    if($modFilieres->isEmpty()) {
+                                        $groupedModules->push(['filiere' => 'Modules Généraux / Sans Filière', 'module' => $module]);
+                                    } else {
+                                        foreach($modFilieres as $filiere) {
+                                            $groupedModules->push(['filiere' => $filiere->nom . ' (' . $filiere->code . ')', 'module' => $module]);
+                                        }
+                                    }
+                                }
+                                $allGroups = $groupedModules->groupBy('filiere');
+                            @endphp
+
+                            @foreach($allGroups as $filiereName => $items)
+                                <optgroup label="{{ $filiereName }}">
+                                    @foreach($items as $item)
+                                        <option value="{{ $item['module']->id }}">
+                                            [{{ $item['module']->code }}] {{ $item['module']->nom }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                        <div class="form-text mt-1">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Ces modules seront assignés à <strong>tous</strong> les professeurs du fichier.
                         </div>
                     </div>
                     <div class="alert alert-info mb-0">

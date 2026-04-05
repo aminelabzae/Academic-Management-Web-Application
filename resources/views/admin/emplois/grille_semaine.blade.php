@@ -1,4 +1,4 @@
-?@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'Planning Hebdomadaire Global')
 @section('subtitle', 'Format Matriciel Professionnel')
@@ -245,17 +245,7 @@
                     </div>
 
                     <div class="row mb-4">
-                        <div class="col-md-6 d-none">
-                            <label class="form-label">Type de semaine</label>
-                            <select class="form-select" name="semaine_type">
-                                <option value="Toutes" selected>Toutes les semaines</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Date fin validité</label>
-                            <input type="date" class="form-control" name="date_fin_validite" id="modal_date_fin_validite">
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end mb-2">
+                        <div class="col-md-12 d-flex align-items-end mb-2">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="actif" value="1" id="modal_actif" checked>
                                 <label class="form-check-label" for="modal_actif">Séance active</label>
@@ -348,22 +338,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const moduleSelect = document.getElementById('modal_module_id');
     const profSelect = document.getElementById('modal_professeur_id');
 
-    async function refreshFilteredData(groupeId, selectedModuleId = null, selectedProfId = null) {
-        moduleSelect.innerHTML = '<option value="">Chargement...</option>';
+    async function refreshFilteredData(groupeId, selectedModuleId = null, selectedProfId = null, updateModules = true) {
+        if (updateModules) moduleSelect.innerHTML = '<option value="">Chargement...</option>';
         profSelect.innerHTML = '<option value="">Chargement...</option>';
         if (!groupeId) return;
 
         try {
-            const response = await fetch(`{{ route('admin.emplois.filter-data') }}?groupe_id=${groupeId}`);
+            let url = `{{ route('admin.emplois.filter-data') }}?groupe_id=${groupeId}`;
+            if (selectedModuleId) url += `&module_id=${selectedModuleId}`;
+
+            const response = await fetch(url);
             const data = await response.json();
 
-            moduleSelect.innerHTML = '<option value="">Sélectionner un module</option>';
-            data.modules.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.id; opt.textContent = `${m.code} - ${m.nom}`;
-                if (m.id == selectedModuleId) opt.selected = true;
-                moduleSelect.appendChild(opt);
-            });
+            if (updateModules) {
+                moduleSelect.innerHTML = '<option value="">Sélectionner un module</option>';
+                data.modules.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id; opt.textContent = `${m.code} - ${m.nom}`;
+                    if (m.id == selectedModuleId) opt.selected = true;
+                    moduleSelect.appendChild(opt);
+                });
+            }
 
             profSelect.innerHTML = '<option value="">Sélectionner un professeur</option>';
             data.professeurs.forEach(p => {
@@ -379,6 +374,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     groupeSelect.addEventListener('change', function() {
         refreshFilteredData(this.value);
+    });
+
+    moduleSelect.addEventListener('change', function() {
+        refreshFilteredData(groupeSelect.value, this.value, profSelect.value, false);
     });
 
     const modalForm = document.getElementById('addSeanceForm');
@@ -411,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             dateDebutInput.value = targetDate.toISOString().split('T')[0];
-            document.getElementById('modal_date_fin_validite').value = '';
+            // document.getElementById('modal_date_fin_validite').value = '';
             document.getElementById('modal_actif').checked = true;
             typeSelect.value = 'Présentiel';
             toggleSalle();
@@ -456,9 +455,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (dateFin) {
-                document.getElementById('modal_date_fin_validite').value = dateFin.split(' ')[0];
+                // document.getElementById('modal_date_fin_validite').value = dateFin.split(' ')[0];
             } else {
-                document.getElementById('modal_date_fin_validite').value = '';
+                // document.getElementById('modal_date_fin_validite').value = '';
             }
             
             document.getElementById('modal_actif').checked = (actif === '1');

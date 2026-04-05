@@ -16,10 +16,10 @@ class EmploiDuTemps extends Model
     {
         static::updated(function ($emploi) {
             if ($emploi->wasChanged('teams_link') && $emploi->teams_link) {
-                // Notifier les étudiants de ce groupe
                 $etudiants = Etudiant::where('groupe_id', $emploi->groupe_id)
                     ->whereNotNull('user_id')
-                    ->get();
+                    ->get()
+                    ->unique('user_id');
                 
                 $profName = $emploi->professeur ? ($emploi->professeur->nom_complet) : 'votre professeur';
                 

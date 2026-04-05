@@ -97,9 +97,19 @@
                             </td>
                             <td><small><?php echo e($attendance->commentaire ?: '-'); ?></small></td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEdit<?php echo e($attendance->id); ?>">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
+                                <div class="d-flex gap-1">
+                                    <?php if($attendance->status == 'Absent'): ?>
+                                        <form action="<?php echo e(route('admin.absences.justify', $attendance)); ?>" method="POST">
+                                            <?php echo csrf_field(); ?>
+                                            <button type="submit" class="btn btn-sm btn-success" title="Justifier l'absence">
+                                                <i class="bi bi-shield-check"></i>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEdit<?php echo e($attendance->id); ?>" title="Modifier">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
                                 
                                 <!-- Modal Edit -->
                                 <div class="modal fade" id="modalEdit<?php echo e($attendance->id); ?>" tabindex="-1" aria-hidden="true">
@@ -152,6 +162,28 @@
         </div>
     <?php endif; ?>
 </div>
+<?php $__env->startPush('scripts'); ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Cibler tous les champs de commentaire dans les modals
+    const textareas = document.querySelectorAll('textarea[name="commentaire"]');
+    
+    textareas.forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            // Trouver le menu déroulant "status" correspondant dans le même formulaire
+            const form = this.closest('form');
+            if (form) {
+                const statusSelect = form.querySelector('select[name="status"]');
+                // Si l'utilisateur commence à taper et que c'est sur "Absent", on passe à "Justifié"
+                if (statusSelect && this.value.trim().length > 0 && statusSelect.value === 'Absent') {
+                    statusSelect.value = 'Justifié';
+                }
+            }
+        });
+    });
+});
+</script>
+<?php $__env->stopPush(); ?>
 <?php $__env->stopSection(); ?>
 
 

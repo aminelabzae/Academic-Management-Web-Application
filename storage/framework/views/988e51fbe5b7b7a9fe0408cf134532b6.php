@@ -1,5 +1,3 @@
-﻿
-
 <?php $__env->startSection('title', 'Professeurs'); ?>
 <?php $__env->startSection('subtitle', 'Gestion des professeurs'); ?>
 
@@ -38,7 +36,7 @@
                         <th>Email</th>
                         <th>Téléphone</th>
                         <th>Spécialité</th>
-                        <th>Heures/mois</th>
+                        <th>Masse Horaire</th>
                         <th>Statut</th>
                         <th>Actions</th>
                     </tr>
@@ -55,17 +53,20 @@
                             <td><?php echo e($professeur->specialite ?? '-'); ?></td>
                             <td>
                                 <?php
-                                    $heuresActuelles = $professeur->getHeuresMensuellesActuelles();
-                                    $maxHeures = $professeur->max_heures_mensuel;
+                                    $heuresHebdo = $professeur->getHeuresHebdomadairesActuelles();
+                                    $heuresMensuelles = $heuresHebdo; // Synchronisation
+                                    $maxHeuresMensuel = $professeur->max_heures_mensuel;
                                 ?>
-                                <?php if($maxHeures): ?>
-                                    <span class="badge <?php echo e($heuresActuelles >= $maxHeures ? 'bg-danger' : ($heuresActuelles >= $maxHeures * 0.7 ? 'bg-warning' : 'bg-info')); ?>">
-                                        <?php echo e(\App\Models\EmploiDuTemps::formatHeures($heuresActuelles)); ?> / <?php echo e(\App\Models\EmploiDuTemps::formatHeures($maxHeures)); ?>
-
+                                <div class="mb-1">
+                                    <span class="badge bg-primary">
+                                        <?php echo e(\App\Models\EmploiDuTemps::formatHeures($heuresHebdo)); ?> / mois
                                     </span>
-                                <?php else: ?>
-                                    <span class="text-muted">∞</span>
-                                <?php endif; ?>
+                                </div>
+                                <div class="small">
+                                    <?php if($maxHeuresMensuel): ?>
+                                        <span class="text-info">Limite: <?php echo e($maxHeuresMensuel); ?>h/mois</span>
+                                    <?php endif; ?>
+                                </div>
                             </td>
                             <td>
                                 <?php if($professeur->actif): ?>
@@ -114,6 +115,36 @@
 </div>
 <?php $__env->stopSection(); ?>
 
+<?php $__env->startPush('styles'); ?>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .select2-container { z-index: 1061 !important; } /* Fix Select2 inside Bootstrap modal */
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        background-color: var(--ofppt-blue);
+        color: white; border: none;
+    }
+</style>
+<?php $__env->stopPush(); ?>
+
+<?php $__env->startPush('scripts'); ?>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        if ($('#import_module_ids').length) {
+            $('#import_module_ids').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#importModal'),
+                width: '100%',
+                placeholder: 'Sélectionner des modules...',
+                closeOnSelect: false
+            });
+        }
+    });
+</script>
+<?php $__env->stopPush(); ?>
+
 
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -133,6 +164,40 @@
                         <div class="form-text mt-2 text-info">
                             <i class="bi bi-info-circle-fill me-1"></i>
                             Un compte utilisateur sera automatiquement créé pour chaque professeur.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="module_ids" class="form-label">Modules à assigner (Optionnel)</label>
+                        <select name="module_ids[]" id="import_module_ids" class="form-select" multiple>
+                            <?php
+                                $groupedModules = collect();
+                                foreach($modules as $module) {
+                                    $modFilieres = $module->filieres ?? collect();
+                                    if($modFilieres->isEmpty()) {
+                                        $groupedModules->push(['filiere' => 'Modules Généraux / Sans Filière', 'module' => $module]);
+                                    } else {
+                                        foreach($modFilieres as $filiere) {
+                                            $groupedModules->push(['filiere' => $filiere->nom . ' (' . $filiere->code . ')', 'module' => $module]);
+                                        }
+                                    }
+                                }
+                                $allGroups = $groupedModules->groupBy('filiere');
+                            ?>
+
+                            <?php $__currentLoopData = $allGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $filiereName => $items): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <optgroup label="<?php echo e($filiereName); ?>">
+                                    <?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <option value="<?php echo e($item['module']->id); ?>">
+                                            [<?php echo e($item['module']->code); ?>] <?php echo e($item['module']->nom); ?>
+
+                                        </option>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                </optgroup>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        </select>
+                        <div class="form-text mt-1">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Ces modules seront assignés à <strong>tous</strong> les professeurs du fichier.
                         </div>
                     </div>
                     <div class="alert alert-info mb-0">

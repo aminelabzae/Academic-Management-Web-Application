@@ -204,23 +204,28 @@
                             const INITIAL_MODULE = "{{ old('module_id', $emploi->module_id ?? '') }}";
                             const INITIAL_PROF = "{{ old('professeur_id', $emploi->professeur_id ?? '') }}";
 
-                            async function refreshFilteredData(groupeId, initial = false) {
+                            async function refreshFilteredData(groupeId, moduleId = null, updateModules = true) {
                                 if (!groupeId) return;
 
                                 try {
-                                    const response = await fetch(`{{ route('admin.emplois.filter-data') }}?groupe_id=${groupeId}`);
+                                    let url = `{{ route('admin.emplois.filter-data') }}?groupe_id=${groupeId}`;
+                                    if (moduleId) url += `&module_id=${moduleId}`;
+
+                                    const response = await fetch(url);
                                     const data = await response.json();
 
                                     // Update Modules
-                                    const currentModule = moduleSelect.value || INITIAL_MODULE;
-                                    moduleSelect.innerHTML = '<option value="">Sélectionner un module</option>';
-                                    data.modules.forEach(m => {
-                                        const opt = document.createElement('option');
-                                        opt.value = m.id;
-                                        opt.textContent = `${m.code} - ${m.nom}`;
-                                        if (m.id == currentModule) opt.selected = true;
-                                        moduleSelect.appendChild(opt);
-                                    });
+                                    if (updateModules) {
+                                        const currentModule = moduleSelect.value || INITIAL_MODULE;
+                                        moduleSelect.innerHTML = '<option value="">Sélectionner un module</option>';
+                                        data.modules.forEach(m => {
+                                            const opt = document.createElement('option');
+                                            opt.value = m.id;
+                                            opt.textContent = `${m.code} - ${m.nom}`;
+                                            if (m.id == currentModule) opt.selected = true;
+                                            moduleSelect.appendChild(opt);
+                                        });
+                                    }
 
                                     // Update Professeurs
                                     const currentProf = profSelect.value || INITIAL_PROF;
@@ -242,25 +247,18 @@
                                 refreshFilteredData(this.value);
                             });
 
+                            moduleSelect.addEventListener('change', function() {
+                                refreshFilteredData(groupeSelect.value, this.value, false);
+                            });
+
                             // Run once on load if group is pre-selected
                             if (groupeSelect.value) {
-                                refreshFilteredData(groupeSelect.value, true);
+                                const initialModule = moduleSelect.value || INITIAL_MODULE;
+                                refreshFilteredData(groupeSelect.value, initialModule, true);
                             }
                         });
                     </script>
 
-                    <div class="row mb-4">
-                        <div class="col-md-6 d-none">
-                            <label for="semaine_type" class="form-label">Type de semaine</label>
-                            <select class="form-select" id="semaine_type" name="semaine_type">
-                                <option value="Toutes" selected>Toutes les semaines</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="date_fin_validite" class="form-label">Date fin validité</label>
-                            <input type="date" class="form-control" id="date_fin_validite" name="date_fin_validite" value="{{ old('date_fin_validite') }}">
-                        </div>
-                    </div>
 
                     <div class="mb-4">
                         <div class="form-check">

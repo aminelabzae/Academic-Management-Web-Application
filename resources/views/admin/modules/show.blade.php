@@ -14,32 +14,47 @@
                     <tr><th>Filières:</th><td>{{ $module->filieres->pluck('nom')->implode(', ') }}</td></tr>
                     <tr><th>Semestre:</th><td><span class="badge bg-info">S{{ $module->semestre }}</span></td></tr>
                     <tr><th>Coefficient:</th><td>{{ $module->coefficient }}</td></tr>
-                    <tr>
-                        <th><i class="bi bi-clock-history me-1"></i>Module heures:</th>
-                        <td>{{ $module->max_heures_mensuel ? \App\Models\EmploiDuTemps::formatHeures($module->max_heures_mensuel) : 'Pas de limite' }}</td>
-                    </tr>
                     @php
-                        $maxHeures = $module->max_heures_mensuel;
+                        $heuresHebdo = $module->getHeuresHebdomadairesActuelles();
+                        $heuresTotales = $module->getHeuresTotalesByGroupe();
+                        $maxHeures = $module->masse_horaire;
                     @endphp
+                    <tr>
+                        <th class="py-3"><i class="bi bi-clock me-1 text-primary"></i>Charge prévue:</th>
+                        <td class="py-3">
+                            <span class="badge bg-primary fs-6">{{ \App\Models\EmploiDuTemps::formatHeures($heuresHebdo) }} / mois</span>
+                        </td>
+                    </tr>
+                    <tr class="border-bottom">
+                        <th class="pb-3 text-muted"><i class="bi bi-calendar-check me-1"></i>Total consommé (Validé):</th>
+                        <td class="pb-3 text-muted">{{ \App\Models\EmploiDuTemps::formatHeures($heuresTotales) }}</td>
+                    </tr>
 
-                    @if($maxHeures)
+                    @if($maxHeures > 0)
                         <tr>
-                            <th colspan="2" class="pt-4"><i class="bi bi-bar-chart-fill me-2"></i>Utilisation des heures par groupe</th>
+                            <th colspan="2" class="pt-4"><i class="bi bi-bar-chart-fill me-2"></i>Progression par groupe</th>
                         </tr>
                         @foreach($module->filieres as $filiere)
                             @foreach($filiere->groupes as $groupe)
                                 @php
-                                    $heuresGroupe = $module->getHeuresMensuellesActuelles(null, $groupe->id);
-                                    $pourcentage = round(($heuresGroupe / $maxHeures) * 100);
+                                    $heuresGroupePrevues = $module->getHeuresHebdomadairesByGroupe($groupe->id);
+                                    $heuresGroupeConsommees = $module->getHeuresTotalesByGroupe($groupe->id);
+                                    // Le pourcentage est maintenant basé sur la charge prévue (automatique)
+                                    $pourcentage = $maxHeures > 0 ? round(($heuresGroupePrevues / $maxHeures) * 100) : 0;
                                 @endphp
                                 <tr>
-                                    <td colspan="2" class="pb-3">
+                                    <td colspan="2" class="pb-4">
                                         <div class="d-flex justify-content-between mb-1">
-                                            <small>Groupe: <strong>{{ $groupe->nom }}</strong> ({{ $filiere->code }})</small>
-                                            <small>{{ \App\Models\EmploiDuTemps::formatHeures($heuresGroupe) }} / {{ \App\Models\EmploiDuTemps::formatHeures($maxHeures) }}</small>
+                                            <div>
+                                                <small class="fw-bold">Groupe: {{ $groupe->nom }}</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <small class="text-primary d-block fw-semibold">{{ \App\Models\EmploiDuTemps::formatHeures($heuresGroupePrevues) }} affectées / {{ $maxHeures }} h</small>
+                                                <small class="text-success" style="font-size: 0.75rem;">Total validé: {{ \App\Models\EmploiDuTemps::formatHeures($heuresGroupeConsommees) }}</small>
+                                            </div>
                                         </div>
-                                        <div class="progress" style="height: 15px;">
-                                            <div class="progress-bar {{ $pourcentage >= 90 ? 'bg-danger' : ($pourcentage >= 70 ? 'bg-warning' : 'bg-success') }}"
+                                        <div class="progress" style="height: 12px;">
+                                            <div class="progress-bar {{ $pourcentage >= 100 ? 'bg-danger' : ($pourcentage >= 80 ? 'bg-warning' : 'bg-success') }}"
                                                  role="progressbar" style="width: {{ min($pourcentage, 100) }}%">
                                             </div>
                                         </div>
@@ -48,7 +63,7 @@
                             @endforeach
                         @endforeach
                     @else
-                        <tr><th>Heures totales (Global):</th><td>{{ \App\Models\EmploiDuTemps::formatHeures($module->getHeuresMensuellesActuelles()) }}/mois</td></tr>
+                        <tr><th>Heures réalisées:</th><td>{{ \App\Models\EmploiDuTemps::formatHeures($module->getHeuresTotalesByGroupe(0)) }} (Global)</td></tr>
                     @endif
                 </table>
             </div>

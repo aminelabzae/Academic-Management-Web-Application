@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="icon" type="image/png" href="{{ asset('OFPPT_Logo.png') }}">
     <title>@yield('title') - ISTAM Gestion EDT</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -17,13 +17,30 @@
             background-color: #f8f9fa;
         }
         .sidebar {
-            min-height: 100vh;
+            height: 100vh;
+            overflow-y: auto;
             background: linear-gradient(180deg, var(--ofppt-blue) 0%, #001a33 100%);
             position: fixed;
             width: 250px;
             left: 0;
             top: 0;
-            z-index: 100;
+            z-index: 1050;
+            transition: all 0.3s ease;
+        }
+
+        /* Custom Scrollbar for Sidebar */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3);
         }
         .sidebar .nav-link {
             color: rgba(255,255,255,0.8);
@@ -49,6 +66,7 @@
         .main-content {
             margin-left: 250px;
             padding: 20px;
+            transition: all 0.3s ease;
         }
         .top-navbar {
             background: white;
@@ -153,20 +171,100 @@
             font-size: 0.9rem;
         }
         
-        @media (max-width: 768px) {
+        .sidebar-toggler {
+            display: none;
+            background: var(--ofppt-blue);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1040;
+        }
+
+        @media (max-width: 992px) {
             .sidebar {
-                width: 100%;
-                position: relative;
-                min-height: auto;
+                left: -250px;
+                width: 250px;
+            }
+            .sidebar.active {
+                left: 0;
             }
             .main-content {
                 margin-left: 0;
+                padding: 10px;
+            }
+            .sidebar-toggler {
+                display: block;
+                font-size: 1.5rem;
+                padding: 4px 10px;
+            }
+            .sidebar-overlay.active {
+                display: block;
+            }
+            .top-navbar {
+                padding: 10px 15px;
+                flex-direction: row;
+                gap: 5px;
+                margin-bottom: 15px;
+                flex-wrap: wrap;
+            }
+            .header-actions {
+                width: 100%;
+                order: 3;
+                margin-top: 10px;
+                display: flex;
+                justify-content: center;
+                gap: 5px;
+            }
+            .header-actions .btn span {
+                display: none;
+            }
+            .header-actions .btn i {
+                margin-right: 0 !important;
+            }
+            .top-navbar h4 {
+                font-size: 1.1rem;
+            }
+            .top-navbar small {
+                display: none;
+            }
+            .user-name-text {
+                display: none;
+            }
+            .table th, .table td {
+                font-size: 0.8rem;
+                padding: 0.5rem 0.25rem;
+            }
+            .btn-sm {
+                padding: 0.25rem 0.4rem;
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .top-navbar h4 {
+                max-width: 150px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         }
     </style>
     @stack('styles')
 </head>
 <body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <div class="d-flex">
         <!-- Sidebar -->
         <nav class="sidebar">
@@ -242,6 +340,11 @@
                         <i class="bi bi-megaphone"></i> Annonces
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.archives.*') ? 'active' : '' }}" href="{{ route('admin.archives.index') }}">
+                        <i class="bi bi-archive"></i> Archives Mensuelles
+                    </a>
+                </li>
 
                 <li class="nav-item mt-3">
                     <small class="text-white-50 px-3">EMPLOI DU TEMPS</small>
@@ -277,9 +380,14 @@
         <!-- Main Content -->
         <main class="main-content flex-grow-1">
             <div class="top-navbar d-flex justify-content-between align-items-center">
-                <div>
-                    <h4 class="mb-0">@yield('title')</h4>
-                    <small class="text-muted">@yield('subtitle')</small>
+                <div class="d-flex align-items-center">
+                    <button class="sidebar-toggler" id="sidebarToggle">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div>
+                        <h4 class="mb-0">@yield('title')</h4>
+                        <small class="text-muted">@yield('subtitle')</small>
+                    </div>
                 </div>
                 <div class="d-flex align-items-center">
                     <!-- Notifications Dropdown -->
@@ -328,11 +436,13 @@
                         </ul>
                     </div>
 
-                    <span class="me-3">
+                    <span class="me-3 user-name-text">
                         <i class="bi bi-person-circle me-1"></i>
                         {{ auth()->user()->name }}
                     </span>
-                    @yield('actions')
+                    <div class="header-actions">
+                        @yield('actions')
+                    </div>
                 </div>
             </div>
 
@@ -369,6 +479,27 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                    sidebarOverlay.classList.toggle('active');
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                    sidebarOverlay.classList.remove('active');
+                });
+            }
+        });
+    </script>
     @stack('scripts')
 </body>
 </html>

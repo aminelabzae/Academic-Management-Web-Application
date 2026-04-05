@@ -11,7 +11,16 @@ class FiliereController extends Controller
 {
     public function index()
     {
+        $search = request('search');
+
         $filieres = Filiere::withCount(['groupes', 'modules'])
+            ->when($search, function ($query) use ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('code', 'like', '%' . $search . '%')
+                      ->orWhere('nom', 'like', '%' . $search . '%')
+                      ->orWhere('secteur', 'like', '%' . $search . '%');
+                });
+            })
             ->orderBy('nom')
             ->paginate(10);
 

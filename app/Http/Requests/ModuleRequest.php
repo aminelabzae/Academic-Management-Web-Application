@@ -14,21 +14,24 @@ class ModuleRequest extends FormRequest
 
     public function rules(): array
     {
-        $moduleId = $this->route('module')?->id;
+        $module = $this->route('module');
+        $moduleId = is_object($module) ? $module->id : $module;
 
         return [
             'code' => [
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('modules', 'code')->ignore($moduleId)
+                Rule::unique('modules', 'code')
+                    ->where('nom', $this->nom)
+                    ->ignore($moduleId)
             ],
             'nom' => 'required|string|max:255',
             'filiere_ids' => 'required|array|min:1',
             'filiere_ids.*' => 'exists:filieres,id,active,1',
             'coefficient' => 'nullable|numeric|min:0|max:10',
             'semestre' => 'required|integer|min:1|max:4',
-            'max_heures_mensuel' => 'nullable|integer|min:1|max:500'
+            'masse_horaire' => 'nullable|integer|min:0'
         ];
     }
 

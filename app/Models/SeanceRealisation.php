@@ -6,11 +6,22 @@ use Illuminate\Database\Eloquent\Model;
 
 class SeanceRealisation extends Model
 {
-    protected $fillable = ['emploi_du_temps_id', 'date', 'module_id'];
+    protected $fillable = ['emploi_du_temps_id', 'date', 'module_id', 'professeur_id', 'groupe_id', 'duree_minutes', 'statut'];
 
     protected $casts = [
-        'date' => 'date'
+        'date' => 'date',
+        'duree_minutes' => 'integer'
     ];
+
+    public function professeur()
+    {
+        return $this->belongsTo(Professeur::class);
+    }
+
+    public function groupe()
+    {
+        return $this->belongsTo(Groupe::class);
+    }
 
     public function emploiDuTemps()
     {

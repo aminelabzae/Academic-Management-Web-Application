@@ -1,4 +1,4 @@
-?<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -34,6 +34,18 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            .btn-sm {
+                padding: 0.4rem 0.6rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -66,6 +78,11 @@
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('professeur.absences') ? 'active' : '' }}" href="{{ route('professeur.absences') }}">
                             <i class="bi bi-person-x me-1"></i> Absences
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('professeur.avancement') ? 'active' : '' }}" href="{{ route('professeur.avancement') }}">
+                            <i class="bi bi-graph-up-arrow me-1"></i> Mon Avancement
                         </a>
                     </li>
                 </ul>

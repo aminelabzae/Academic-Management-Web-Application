@@ -61,6 +61,16 @@ class AttendanceController extends Controller
         return back()->with('success', 'Le statut de présence a été mis à jour.');
     }
 
+    public function justify(Request $request, Attendance $attendance)
+    {
+        $attendance->update([
+            'status' => 'Justifié',
+            'commentaire' => 'Justifié par l\'administrateur le ' . now()->format('d/m/Y H:i')
+        ]);
+
+        return back()->with('success', 'L\'absence de ' . $attendance->etudiant->nom_complet . ' a été justifiée.');
+    }
+
     public function destroy(Attendance $attendance)
     {
         $attendance->delete();

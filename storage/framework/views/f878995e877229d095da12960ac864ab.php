@@ -1,5 +1,3 @@
-﻿
-
 <?php $__env->startSection('title', 'Gestion des Filières'); ?>
 <?php $__env->startSection('subtitle', 'Liste de toutes les filières'); ?>
 
@@ -24,6 +22,19 @@
 <?php endif; ?>
 
 <div class="card">
+    <div class="card-header bg-white py-3">
+        <form method="GET" class="d-flex">
+            <input type="text" name="search" class="form-control me-2" placeholder="Rechercher par code, nom ou secteur..." value="<?php echo e(request('search')); ?>">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Rechercher
+            </button>
+            <?php if(request('search')): ?>
+                <a href="<?php echo e(route('admin.filieres.index')); ?>" class="btn btn-secondary ms-2">
+                    <i class="bi bi-x-circle"></i> Effacer
+                </a>
+            <?php endif; ?>
+        </form>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">

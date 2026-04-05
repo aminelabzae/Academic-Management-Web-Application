@@ -104,10 +104,10 @@ class EmploiController extends Controller
         $emploi->update(['is_examen' => !$emploi->is_examen]);
 
         if ($emploi->is_examen) {
-            // Notif Étudiants (seulement ceux qui ont un compte utilisateur)
             $etudiants = \App\Models\Etudiant::where('groupe_id', $emploi->groupe_id)
                 ->whereNotNull('user_id')
-                ->get();
+                ->get()
+                ->unique('user_id');
                 
             foreach ($etudiants as $etudiant) {
                 if ($etudiant->user) {
@@ -153,12 +153,20 @@ class EmploiController extends Controller
             return back()->with('error', 'Module invalide.');
         }
 
+        // Calculer la durée actuelle
+        $debut = \Carbon\Carbon::parse($emploi->heure_debut);
+        $fin = \Carbon\Carbon::parse($emploi->heure_fin);
+        $duree = $debut->diffInMinutes($fin);
+
         // Créer la réalisation
         $realisation = \App\Models\SeanceRealisation::firstOrCreate([
             'emploi_du_temps_id' => $emploi->id,
             'date' => now()->toDateString(),
         ], [
-            'module_id' => $moduleId
+            'module_id' => $moduleId,
+            'professeur_id' => $emploi->professeur_id,
+            'groupe_id' => $emploi->groupe_id,
+            'duree_minutes' => $duree
         ]);
 
         // Enregistrer les présences
@@ -218,5 +226,17 @@ class EmploiController extends Controller
             ->paginate(15);
 
         return view('professeur.absences', compact('absences'));
+    }
+
+    public function avancement()
+    {
+        $user = auth()->user();
+        $professeur = Professeur::where('user_id', $user->id)->first();
+        
+        if (!$professeur) return back();
+
+        $modules = $professeur->modules()->with(['syllabusItems.realisations'])->get();
+
+        return view('professeur.avancement', compact('modules', 'professeur'));
     }
 }

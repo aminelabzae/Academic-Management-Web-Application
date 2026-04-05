@@ -1,5 +1,3 @@
-﻿
-
 <?php $__env->startSection('title', 'Groupes'); ?>
 <?php $__env->startSection('subtitle', 'Gestion des groupes de stagiaires'); ?>
 
@@ -16,6 +14,17 @@
 <div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-people me-2"></i>Liste des groupes</h5>
+        <form method="GET" class="mt-3 d-flex">
+            <input type="text" name="search" class="form-control me-2" placeholder="Rechercher par nom ou filière..." value="<?php echo e(request('search')); ?>">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Rechercher
+            </button>
+            <?php if(request('search')): ?>
+                <a href="<?php echo e(route('admin.groupes.index')); ?>" class="btn btn-secondary ms-2">
+                    <i class="bi bi-x-circle"></i> Effacer
+                </a>
+            <?php endif; ?>
+        </form>
     </div>
     <div class="card-body">
         <div class="table-responsive">

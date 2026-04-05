@@ -18,24 +18,29 @@ class ProfesseurController extends Controller
     public function index()
     {
         $search = request('search');
+        $modules = Module::with('filieres')->orderBy('nom')->get();
 
         $professeurs = Professeur::when($search, function ($query) use ($search) {
-                $query->where('nom', 'like', '%' . $search . '%')
-                    ->orWhere('prenom', 'like', '%' . $search . '%')
-                    ->orWhere('email', 'like', '%' . $search . '%')
-                    ->orWhere('telephone', 'like', '%' . $search . '%')
-                    ->orWhere('specialite', 'like', '%' . $search . '%');
+                $query->where(function($q) use ($search) {
+                    $q->where('nom', 'like', '%' . $search . '%')
+                        ->orWhere('prenom', 'like', '%' . $search . '%')
+                        ->orWhere('email', 'like', '%' . $search . '%')
+                        ->orWhere('telephone', 'like', '%' . $search . '%')
+                        ->orWhere('specialite', 'like', '%' . $search . '%')
+                        ->orWhereRaw('CONCAT(prenom, " ", nom) LIKE ?', ['%' . $search . '%'])
+                        ->orWhereRaw('CONCAT(nom, " ", prenom) LIKE ?', ['%' . $search . '%']);
+                });
             })
             ->orderBy('nom')
             ->orderBy('prenom')
             ->paginate(10);
 
-        return view('admin.professeurs.index', compact('professeurs'));
+        return view('admin.professeurs.index', compact('professeurs', 'modules'));
     }
 
     public function create()
     {
-        $modules = Module::orderBy('nom')->get();
+        $modules = Module::with('filieres')->orderBy('nom')->get();
         $groupes = Groupe::with('filiere')->orderBy('nom')->get();
         $filieres = Filiere::orderBy('nom')->get();
         return view('admin.professeurs.create', compact('modules', 'groupes', 'filieres'));
@@ -79,7 +84,7 @@ class ProfesseurController extends Controller
 
     public function edit(Professeur $professeur)
     {
-        $modules = Module::orderBy('nom')->get();
+        $modules = Module::with('filieres')->orderBy('nom')->get();
         $groupes = Groupe::with('filiere')->orderBy('nom')->get();
         $filieres = Filiere::orderBy('nom')->get();
         return view('admin.professeurs.edit', compact('professeur', 'modules', 'groupes', 'filieres'));
@@ -168,6 +173,8 @@ class ProfesseurController extends Controller
 
             $headers = array_map(function($h) { return mb_strtolower(trim((string)$h)); }, $rows[0]);
             $created = 0; $updated = 0; $errors = [];
+            
+            $globalModules = $request->input('module_ids', []);
 
             for ($i = 1; $i < count($rows); $i++) {
                 $row = $rows[$i];
@@ -179,7 +186,7 @@ class ProfesseurController extends Controller
                     $data[$h] = $row[$idx] ?? null;
                 }
 
-                $res = $this->processRowManual($data);
+                $res = $this->processRowManual($data, $globalModules);
                 if ($res === 'created') $created++;
                 elseif ($res === 'updated') $updated++;
                 else if ($res !== null) $errors[] = "Ligne " . ($i+1) . ": " . $res;
@@ -196,7 +203,7 @@ class ProfesseurController extends Controller
         }
     }
 
-    private function processRowManual($data)
+    private function processRowManual($data, $globalModules = [])
     {
         $matricule = $this->getValManual($data, ['mle', 'matricule', 'id']);
         $nom = $this->getValManual($data, ['nom', 'last name', 'lastname', 'formateur']);
@@ -223,7 +230,7 @@ class ProfesseurController extends Controller
         $professeur = \App\Models\Professeur::where('matricule', $matricule)->first();
         $res = $professeur ? 'updated' : 'created';
 
-        \App\Models\Professeur::updateOrCreate(
+        $professeur = \App\Models\Professeur::updateOrCreate(
             ['matricule' => $matricule],
             [
                 'nom' => mb_strtoupper($nom),
@@ -235,6 +242,10 @@ class ProfesseurController extends Controller
                 'actif' => true
             ]
         );
+
+        if (!empty($globalModules)) {
+            $professeur->modules()->syncWithoutDetaching($globalModules);
+        }
 
         return $res;
     }

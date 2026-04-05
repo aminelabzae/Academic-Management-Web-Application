@@ -1,4 +1,4 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'Gestion des Modules')
 @section('subtitle', 'Liste de tous les modules')
@@ -54,14 +54,20 @@
                             </td>
                             <td><span class="badge bg-secondary">S{{ $module->semestre }}</span></td>
                             <td>
-                                @php
-                                    $heuresActuelles = $module->getHeuresMensuellesActuelles();
-                                    $maxHeures = $module->max_heures_mensuel;
-                                @endphp
-                                @if($maxHeures)
-                                    <span class="badge {{ $heuresActuelles >= $maxHeures ? 'bg-danger' : ($heuresActuelles >= $maxHeures * 0.7 ? 'bg-warning' : 'bg-info') }}">
-                                        {{ \App\Models\EmploiDuTemps::formatHeures($heuresActuelles) }} / {{ \App\Models\EmploiDuTemps::formatHeures($maxHeures) }}
-                                    </span>
+                                @if($module->masse_horaire)
+                                    @php
+                                        $heuresHebdo = $module->getHeuresHebdomadairesActuelles();
+                                        $heuresTotales = $module->getHeuresTotalesByGroupe(); // Toutes séances
+                                        $ratio = $module->masse_horaire > 0 ? ($heuresTotales / $module->masse_horaire) : 0;
+                                    @endphp
+                                    <div class="mb-1">
+                                        <span class="badge bg-primary">
+                                            {{ \App\Models\EmploiDuTemps::formatHeures($heuresHebdo) }} / mois
+                                        </span>
+                                    </div>
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">
+                                        Total consommé: {{ \App\Models\EmploiDuTemps::formatHeures($heuresTotales) }} / {{ $module->masse_horaire }}h
+                                    </small>
                                 @else
                                     <span class="text-muted">∞</span>
                                 @endif

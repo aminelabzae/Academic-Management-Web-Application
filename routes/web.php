@@ -70,12 +70,17 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('salles', SalleController::class);
     Route::resource('emplois', EmploiDuTempsController::class);
     Route::resource('examens', ExamenController::class);
+    Route::post('absences/{attendance}/justify', [AttendanceController::class, 'justify'])->name('absences.justify');
     Route::resource('absences', AttendanceController::class);
     Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
     Route::resource('annonces', AnnonceController::class)->only(['index', 'create', 'store', 'destroy']);
 
+    Route::get('archives', [\App\Http\Controllers\Admin\ArchiveController::class, 'index'])->name('archives.index');
+    Route::get('archives/{year}/{month}', [\App\Http\Controllers\Admin\ArchiveController::class, 'show'])->name('archives.show');
+
     Route::get('emplois-grille', [EmploiDuTempsController::class, 'grille'])->name('emplois.grille');
     Route::get('emplois-grille-semaine', [EmploiDuTempsController::class, 'grilleSemaine'])->name('emplois.grille-semaine');
+    Route::post('emplois/generate', [EmploiDuTempsController::class, 'generateWeeklySessions'])->name('emplois.generate');
     Route::post('emplois/{emploi}/approve', [EmploiDuTempsController::class, 'approveAnnulation'])->name('emplois.approve');
     Route::post('emplois/{emploi}/reject', [EmploiDuTempsController::class, 'rejectAnnulation'])->name('emplois.reject');
     Route::get('emplois-pdf', [EmploiDuTempsController::class, 'exportPdf'])->name('emplois.pdf');
@@ -93,6 +98,7 @@ Route::middleware(['auth', 'professeur'])->prefix('professeur')->name('professeu
     Route::post('/emploi/{emploi}/confirmer', [ProfEmploiController::class, 'confirmerSeance'])->name('emploi.confirmer');
     Route::get('/seances-realisees', [ProfEmploiController::class, 'seancesRealisees'])->name('seances.realisees');
     Route::get('/absences', [ProfEmploiController::class, 'absences'])->name('absences');
+    Route::get('/avancement', [ProfEmploiController::class, 'avancement'])->name('avancement');
     Route::post('/modules/{module}/syllabus', [ProfSyllabusController::class, 'store'])->name('syllabus.store');
 });
 

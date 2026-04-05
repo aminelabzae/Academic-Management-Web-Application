@@ -15,9 +15,9 @@ class SyllabusController extends Controller
         $user = auth()->user();
         $professeur = Professeur::where('user_id', $user->id)->first();
 
-        // Sécurité : Vérifier que le module appartient bien à ce professeur
-        if (!$professeur || $module->professeur_id !== $professeur->id) {
-            return response()->json(['error' => 'Action non autorisée'], 403);
+        // Sécurité : Vérifier que le module appartient bien à ce professeur via la table pivot
+        if (!$professeur || !$professeur->modules->contains($module->id)) {
+            return response()->json(['error' => 'Action non autorisée. Vous n\'êtes pas assigné à ce module.'], 403);
         }
 
         $request->validate([

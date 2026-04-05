@@ -19,12 +19,14 @@ class ModuleController extends Controller
 
         $modules = Module::with('filieres')
             ->when($search, function ($query) use ($search) {
-                $query->where('code', 'like', '%' . $search . '%')
-                    ->orWhere('nom', 'like', '%' . $search . '%')
-                    ->orWhereHas('filieres', function ($q) use ($search) {
-                        $q->where('nom', 'like', '%' . $search . '%')
-                          ->orWhere('code', 'like', '%' . $search . '%');
-                    });
+                $query->where(function($q) use ($search) {
+                    $q->where('code', 'like', '%' . $search . '%')
+                        ->orWhere('nom', 'like', '%' . $search . '%')
+                        ->orWhereHas('filieres', function ($f) use ($search) {
+                            $f->where('nom', 'like', '%' . $search . '%')
+                              ->orWhere('code', 'like', '%' . $search . '%');
+                        });
+                });
             })
             ->orderBy('code')
             ->paginate(10);

@@ -19,11 +19,10 @@ class Module extends Model
         'masse_horaire', // Masse horaire
         'coefficient', // Coefficient
         'semestre',    // Semestre
-        'max_heures_mensuel', // Limite d'heures mensuelles
     ];
 
     protected $casts = [
-        'max_heures_mensuel' => 'integer',
+        'masse_horaire' => 'integer',
     ];
 
     // Un module peut être enseigné par plusieurs professeurs
@@ -52,15 +51,7 @@ class Module extends Model
         $debutMois = now()->startOfMonth();
         $finMois = now()->endOfMonth();
 
-        $query = SeanceRealisation::where(function($q) use ($groupeId) {
-            $q->where('module_id', $this->id)
-              ->orWhere(function($sq) {
-                  $sq->whereNull('module_id')
-                     ->whereHas('emploiDuTemps', function($eq) {
-                         $eq->where('module_id', $this->id);
-                     });
-              });
-        });
+        $query = SeanceRealisation::where('module_id', $this->id);
 
         if ($groupeId) {
             $query->whereHas('emploiDuTemps', function($q) use ($groupeId) {
@@ -76,10 +67,7 @@ class Module extends Model
 
         $totalMinutes = 0;
         foreach ($query->get() as $realisation) {
-            $emploi = $realisation->emploiDuTemps;
-            $debut = \Carbon\Carbon::parse($emploi->heure_debut);
-            $fin = \Carbon\Carbon::parse($emploi->heure_fin);
-            $totalMinutes += $debut->diffInMinutes($fin);
+            $totalMinutes += $realisation->duree_minutes;
         }
 
         return $totalMinutes / 60;
@@ -89,29 +77,53 @@ class Module extends Model
      * Calculer le total des heures (masse horaire consommée) pour un groupe
      * Basé sur les séances RÉELLEMENT validées par les professeurs
      */
-    public function getHeuresTotalesByGroupe(int $groupeId): float
+    public function getHeuresTotalesByGroupe(?int $groupeId = null, ?int $excludeEmploiId = null): float
     {
-        $query = SeanceRealisation::whereHas('emploiDuTemps', function($q) use ($groupeId) {
-            $q->where('groupe_id', $groupeId);
-        })
-        ->where(function($q) {
-            $q->where('module_id', $this->id)
-              ->orWhere(function($sq) {
-                  $sq->whereNull('module_id')
-                     ->whereHas('emploiDuTemps', function($eq) {
-                         $eq->where('module_id', $this->id);
-                     });
-              });
-        });
+        $query = SeanceRealisation::where('module_id', $this->id);
+
+        if ($groupeId !== null && $groupeId > 0) {
+            $query->whereHas('emploiDuTemps', function($q) use ($groupeId) {
+                $q->where('groupe_id', $groupeId);
+            });
+        }
+
+        if ($excludeEmploiId) {
+            $query->where('emploi_du_temps_id', '!=', $excludeEmploiId);
+        }
 
         $totalMinutes = 0;
         foreach ($query->get() as $realisation) {
-            $emploi = $realisation->emploiDuTemps;
+            $totalMinutes += $realisation->duree_minutes;
+        }
+
+        return $totalMinutes / 60;
+    }
+
+    public function getHeuresHebdomadairesByGroupe(int $groupeId): float
+    {
+        $emplois = $this->emploisDuTemps()
+            ->where('actif', true)
+            ->where('groupe_id', $groupeId)
+            ->get();
+            
+        $totalMinutes = 0;
+        foreach ($emplois as $emploi) {
             $debut = \Carbon\Carbon::parse($emploi->heure_debut);
             $fin = \Carbon\Carbon::parse($emploi->heure_fin);
             $totalMinutes += $debut->diffInMinutes($fin);
         }
+        return $totalMinutes / 60;
+    }
 
+    public function getHeuresHebdomadairesActuelles(): float
+    {
+        $emplois = $this->emploisDuTemps()->where('actif', true)->get();
+        $totalMinutes = 0;
+        foreach ($emplois as $emploi) {
+            $debut = \Carbon\Carbon::parse($emploi->heure_debut);
+            $fin = \Carbon\Carbon::parse($emploi->heure_fin);
+            $totalMinutes += $debut->diffInMinutes($fin);
+        }
         return $totalMinutes / 60;
     }
 

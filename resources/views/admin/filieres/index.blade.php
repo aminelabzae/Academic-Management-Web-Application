@@ -1,4 +1,4 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'Gestion des Filières')
 @section('subtitle', 'Liste de toutes les filières')
@@ -23,6 +23,19 @@
 @endif
 
 <div class="card">
+    <div class="card-header bg-white py-3">
+        <form method="GET" class="d-flex">
+            <input type="text" name="search" class="form-control me-2" placeholder="Rechercher par code, nom ou secteur..." value="{{ request('search') }}">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Rechercher
+            </button>
+            @if(request('search'))
+                <a href="{{ route('admin.filieres.index') }}" class="btn btn-secondary ms-2">
+                    <i class="bi bi-x-circle"></i> Effacer
+                </a>
+            @endif
+        </form>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">

@@ -69,11 +69,9 @@ class Professeur extends Model
     }
 
     /**
-     * Calculer les heures mensuelles actuelles du professeur
-     * Chaque créneau = 2h30 (2.5h)
-     * semaine_type 'Toutes' = ×4/mois, 'Paire'/'Impaire' = ×2/mois
+     * Calculer les heures hebdomadaires actuelles du professeur (Masse horaire)
      */
-    public function getHeuresMensuellesActuelles(?int $excludeEmploiId = null): float
+    public function getHeuresHebdomadairesActuelles(?int $excludeEmploiId = null): float
     {
         $query = $this->emploisDuTemps()->where('actif', true);
 
@@ -86,11 +84,40 @@ class Professeur extends Model
             $debut = \Carbon\Carbon::parse($emploi->heure_debut);
             $fin = \Carbon\Carbon::parse($emploi->heure_fin);
             $heures = $debut->diffInMinutes($fin) / 60;
-            $multiplicateur = ($emploi->semaine_type === 'Toutes') ? 4 : 2;
-            $total += $heures * $multiplicateur;
+            
+            // Si c'est 'Toutes', on compte la séance une fois par semaine
+            // Si c'est Paire/Impaire, on compte 0.5 (en moyenne par semaine) ou on reste sur l'hebdo simple
+            // Pour la masse horaire hebdomadaire standard, on compte chaque séance de l'emploi du temps
+            $total += $heures;
         }
 
         return $total;
+    }
+
+    /**
+     * Calculer les heures mensuelles actuelles du professeur (Estimation)
+     * Chaque créneau = 2h30 (2.5h)
+     * semaine_type 'Toutes' = ×4/mois, 'Paire'/'Impaire' = ×2/mois
+     */
+    public function getHeuresMensuellesActuelles(?int $excludeEmploiId = null): float
+    {
+        $debutMois = now()->startOfMonth();
+        $finMois = now()->endOfMonth();
+        
+        // On compte les séances explicitement créées pour ce professeur dans le mois
+        $query = SeanceRealisation::where('professeur_id', $this->id)
+            ->whereBetween('date', [$debutMois, $finMois]);
+
+        if ($excludeEmploiId) {
+            $query->where('emploi_du_temps_id', '!=', $excludeEmploiId);
+        }
+
+        $totalMinutes = 0;
+        foreach ($query->get() as $realisation) {
+            $totalMinutes += $realisation->duree_minutes;
+        }
+
+        return $totalMinutes / 60;
     }
 
     /**
@@ -102,7 +129,8 @@ class Professeur extends Model
         $finMois = now()->endOfMonth();
 
         $query = SeanceRealisation::whereHas('emploiDuTemps', function($q) {
-            $q->where('professeur_id', $this->id);
+            $q->where('professeur_id', $this->id)
+              ->whereNull('deleted_at'); // Exclure les séances supprimées
         })
         ->whereBetween('date', [$debutMois, $finMois]);
 

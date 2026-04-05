@@ -12,8 +12,19 @@ class GroupeController extends Controller
 {
     public function index()
     {
+        $search = request('search');
+
         $groupes = Groupe::with('filiere')
             ->withCount('etudiants')
+            ->when($search, function ($query) use ($search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('nom', 'like', '%' . $search . '%')
+                      ->orWhereHas('filiere', function($f) use ($search) {
+                          $f->where('nom', 'like', '%' . $search . '%')
+                            ->orWhere('code', 'like', '%' . $search . '%');
+                      });
+                });
+            })
             ->orderBy('nom')
             ->paginate(10);
 

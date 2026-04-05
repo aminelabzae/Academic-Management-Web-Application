@@ -1,4 +1,4 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'Groupes')
 @section('subtitle', 'Gestion des groupes de stagiaires')
@@ -16,6 +16,17 @@
 <div class="card">
     <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-people me-2"></i>Liste des groupes</h5>
+        <form method="GET" class="mt-3 d-flex">
+            <input type="text" name="search" class="form-control me-2" placeholder="Rechercher par nom ou filière..." value="{{ request('search') }}">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Rechercher
+            </button>
+            @if(request('search'))
+                <a href="{{ route('admin.groupes.index') }}" class="btn btn-secondary ms-2">
+                    <i class="bi bi-x-circle"></i> Effacer
+                </a>
+            @endif
+        </form>
     </div>
     <div class="card-body">
         <div class="table-responsive">

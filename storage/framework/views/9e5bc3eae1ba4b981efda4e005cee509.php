@@ -1,5 +1,3 @@
-?
-
 <?php $__env->startSection('title', 'Tableau de Bord'); ?>
 <?php $__env->startSection('subtitle', 'Vue d\'ensemble du système'); ?>
 

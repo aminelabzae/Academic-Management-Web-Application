@@ -1,5 +1,3 @@
-﻿
-
 <?php $__env->startSection('title', 'Gestion des Modules'); ?>
 <?php $__env->startSection('subtitle', 'Liste de tous les modules'); ?>
 
@@ -54,15 +52,20 @@
                             </td>
                             <td><span class="badge bg-secondary">S<?php echo e($module->semestre); ?></span></td>
                             <td>
-                                <?php
-                                    $heuresActuelles = $module->getHeuresMensuellesActuelles();
-                                    $maxHeures = $module->max_heures_mensuel;
-                                ?>
-                                <?php if($maxHeures): ?>
-                                    <span class="badge <?php echo e($heuresActuelles >= $maxHeures ? 'bg-danger' : ($heuresActuelles >= $maxHeures * 0.7 ? 'bg-warning' : 'bg-info')); ?>">
-                                        <?php echo e(\App\Models\EmploiDuTemps::formatHeures($heuresActuelles)); ?> / <?php echo e(\App\Models\EmploiDuTemps::formatHeures($maxHeures)); ?>
-
-                                    </span>
+                                <?php if($module->masse_horaire): ?>
+                                    <?php
+                                        $heuresHebdo = $module->getHeuresHebdomadairesActuelles();
+                                        $heuresTotales = $module->getHeuresTotalesByGroupe(); // Toutes séances
+                                        $ratio = $module->masse_horaire > 0 ? ($heuresTotales / $module->masse_horaire) : 0;
+                                    ?>
+                                    <div class="mb-1">
+                                        <span class="badge bg-primary">
+                                            <?php echo e(\App\Models\EmploiDuTemps::formatHeures($heuresHebdo)); ?> / mois
+                                        </span>
+                                    </div>
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">
+                                        Total consommé: <?php echo e(\App\Models\EmploiDuTemps::formatHeures($heuresTotales)); ?> / <?php echo e($module->masse_horaire); ?>h
+                                    </small>
                                 <?php else: ?>
                                     <span class="text-muted">∞</span>
                                 <?php endif; ?>

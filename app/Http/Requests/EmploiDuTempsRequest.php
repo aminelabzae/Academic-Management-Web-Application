@@ -37,7 +37,6 @@ class EmploiDuTempsRequest extends FormRequest
             'salle_id' => 'required_if:type_seance,Présentiel|nullable|exists:salles,id',
             'semaine_type' => 'nullable|in:Toutes,Paire,Impaire',
             'date_debut_validite' => 'required|date',
-            'date_fin_validite' => 'nullable|date|after_or_equal:date_debut_validite',
             'actif' => 'boolean'
         ];
     }

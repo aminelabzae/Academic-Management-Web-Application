@@ -126,16 +126,34 @@ if (isset($message)) { $__messageOriginal = $message; }
 $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
-unset($__errorArgs, $__bag); ?>" multiple size="6">
-                                <?php $__currentLoopData = $modules; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $module): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <option value="<?php echo e($module->id); ?>" 
-                                        <?php echo e((collect(old('modules', $professeur->modules->pluck('id')))->contains($module->id)) ? 'selected' : ''); ?>>
-                                        [<?php echo e($module->code); ?>] <?php echo e($module->nom); ?>
+unset($__errorArgs, $__bag); ?>" multiple>
+                                <?php
+                                    $groupedModules = collect();
+                                    foreach($modules as $module) {
+                                        if($module->filieres->isEmpty()) {
+                                            $groupedModules->push(['filiere' => 'Modules Généraux / Sans Filière', 'module' => $module]);
+                                        } else {
+                                            foreach($module->filieres as $filiere) {
+                                                $groupedModules->push(['filiere' => $filiere->nom . ' (' . $filiere->code . ')', 'module' => $module]);
+                                            }
+                                        }
+                                    }
+                                    $allGroups = $groupedModules->groupBy('filiere');
+                                ?>
 
-                                    </option>
+                                <?php $__currentLoopData = $allGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $filiereName => $items): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <optgroup label="<?php echo e($filiereName); ?>">
+                                        <?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <option value="<?php echo e($item['module']->id); ?>" 
+                                                <?php echo e((collect(old('modules', $professeur->modules->pluck('id')))->contains($item['module']->id)) ? 'selected' : ''); ?>>
+                                                [<?php echo e($item['module']->code); ?>] <?php echo e($item['module']->nom); ?>
+
+                                            </option>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                    </optgroup>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </select>
-                            <small class="text-muted">Utilisez Ctrl+Clic pour sélection multiple</small>
+                            <small class="text-muted">Sélection multiple supportée</small>
                             <?php $__errorArgs = ['modules'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -155,7 +173,7 @@ if (isset($message)) { $__messageOriginal = $message; }
 $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
-unset($__errorArgs, $__bag); ?>" multiple size="6">
+unset($__errorArgs, $__bag); ?>" multiple>
                                 <?php $__currentLoopData = $groupes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $groupe): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <option value="<?php echo e($groupe->id); ?>" 
                                         <?php echo e((collect(old('groupes', $professeur->groupes->pluck('id')))->contains($groupe->id)) ? 'selected' : ''); ?>>
@@ -182,7 +200,7 @@ if (isset($message)) { $__messageOriginal = $message; }
 $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
-unset($__errorArgs, $__bag); ?>" multiple size="6">
+unset($__errorArgs, $__bag); ?>" multiple>
                                 <?php $__currentLoopData = $filieres; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $filiere): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <option value="<?php echo e($filiere->id); ?>" 
                                         <?php echo e((collect(old('filieres', $professeur->filieres->pluck('id')))->contains($filiere->id)) ? 'selected' : ''); ?>>
@@ -224,6 +242,48 @@ unset($__errorArgs, $__bag); ?>
     </div>
 </div>
 <?php $__env->stopSection(); ?>
+
+<?php $__env->startPush('styles'); ?>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .select2-container--bootstrap-5 .select2-selection {
+        min-height: 38px;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 0 5px;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        background-color: var(--ofppt-blue);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 2px 8px;
+        margin: 4px 2px;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+        color: white;
+        margin-right: 5px;
+    }
+</style>
+<?php $__env->stopPush(); ?>
+
+<?php $__env->startPush('scripts'); ?>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#modules, #groupes, #filieres').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Sélectionner...',
+            closeOnSelect: false
+        });
+    });
+</script>
+<?php $__env->stopPush(); ?>
 
 
 

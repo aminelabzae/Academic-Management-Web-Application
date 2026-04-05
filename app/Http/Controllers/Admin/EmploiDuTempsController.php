@@ -22,17 +22,45 @@ class EmploiDuTempsController extends Controller
         $this->conflitService = $conflitService;
     }
 
+    public function generateWeeklySessions(Request $request)
+    {
+        \Illuminate\Support\Facades\Artisan::call('app:generate-weekly-sessions', [
+            'date' => $request->date ?? now()->startOfWeek()->toDateString()
+        ]);
+        
+        return back()->with('success', 'Séances de la semaine générées avec succès.');
+    }
+
     public function index(Request $request)
     {
-        $query = EmploiDuTemps::with(['professeur', 'groupe', 'module', 'salle'])
-            ->orderBy('jour')
-            ->orderBy('heure_debut');
+        $search = $request->get('search');
+        $query = EmploiDuTemps::with(['professeur', 'groupe', 'module', 'salle']);
 
         if ($request->get('view') === 'trashed') {
             $query->onlyTrashed();
         }
 
-        $emplois = $query->paginate(15)->appends($request->all());
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('jour', 'like', '%' . $search . '%')
+                  ->orWhereHas('groupe', function($g) use ($search) { $g->where('nom', 'like', '%' . $search . '%'); })
+                  ->orWhereHas('module', function($m) use ($search) { 
+                      $m->where('nom', 'like', '%' . $search . '%')
+                        ->orWhere('code', 'like', '%' . $search . '%'); 
+                  })
+                  ->orWhereHas('professeur', function($p) use ($search) {
+                      $p->where('nom', 'like', '%' . $search . '%')
+                        ->orWhere('prenom', 'like', '%' . $search . '%')
+                        ->orWhereRaw('CONCAT(prenom, " ", nom) LIKE ?', ['%' . $search . '%'])
+                        ->orWhereRaw('CONCAT(nom, " ", prenom) LIKE ?', ['%' . $search . '%']);
+                  });
+            });
+        }
+
+        $emplois = $query->orderBy('jour')
+            ->orderBy('heure_debut')
+            ->paginate(15)
+            ->appends($request->all());
 
         return view('admin.emplois.index', compact('emplois'));
     }
@@ -87,6 +115,40 @@ class EmploiDuTempsController extends Controller
         if (!empty($conflits)) {
             $messages = $this->conflitService->formaterMessagesConflits($conflits);
             return back()->withErrors(['conflits' => $messages])->withInput();
+        }
+
+        // Vérification de la limite d'heures du professeur
+        $professeur = Professeur::find($data['professeur_id']);
+        if ($professeur && $professeur->max_heures_mensuel) {
+            $debut = \Carbon\Carbon::parse($data['heure_debut']);
+            $fin = \Carbon\Carbon::parse($data['heure_fin']);
+            $dureeHeures = $debut->diffInMinutes($fin) / 60;
+            
+            $currentHeures = $professeur->getHeuresHebdomadairesActuelles();
+            if (($currentHeures + $dureeHeures) > $professeur->max_heures_mensuel) {
+                $maxFormatted = EmploiDuTemps::formatHeures($professeur->max_heures_mensuel);
+                $currentFormatted = EmploiDuTemps::formatHeures($currentHeures);
+                $dureeFormatted = EmploiDuTemps::formatHeures($dureeHeures);
+                
+                return back()->withErrors(['professeur_id' => "Ce professeur a atteint sa limite de {$maxFormatted}. (Charge actuelle: {$currentFormatted} + nouvelle séance: {$dureeFormatted} = " . EmploiDuTemps::formatHeures($currentHeures + $dureeHeures) . ")"])->withInput();
+            }
+        }
+
+        // Vérification de la limite de la masse horaire du module
+        $module = Module::find($data['module_id']);
+        if ($module && $module->masse_horaire && isset($data['groupe_id'])) {
+            $debut = \Carbon\Carbon::parse($data['heure_debut']);
+            $fin = \Carbon\Carbon::parse($data['heure_fin']);
+            $dureeHeures = $debut->diffInMinutes($fin) / 60;
+            
+            $heuresConsommees = $module->getHeuresTotalesByGroupe($data['groupe_id']);
+            if (($heuresConsommees + $dureeHeures) > $module->masse_horaire) {
+                $totalFormatted = EmploiDuTemps::formatHeures($module->masse_horaire);
+                $consommeFormatted = EmploiDuTemps::formatHeures($heuresConsommees);
+                $nouvelleFormatted = EmploiDuTemps::formatHeures($dureeHeures);
+                
+                return back()->withErrors(['module_id' => "Le module {$module->nom} a atteint sa masse horaire limite de {$totalFormatted} pour ce groupe. (Déjà planifié/réalisé: {$consommeFormatted} + cette séance: {$nouvelleFormatted} = " . EmploiDuTemps::formatHeures($heuresConsommees + $dureeHeures) . ")"])->withInput();
+            }
         }
 
         EmploiDuTemps::create($data);
@@ -156,6 +218,43 @@ class EmploiDuTempsController extends Controller
             return back()->withErrors(['conflits' => $messages])->withInput();
         }
 
+        // Vérification de la limite d'heures du professeur (en excluant la séance en cours de modification)
+        $professeur = Professeur::find($data['professeur_id'] ?? $emploi->professeur_id);
+        if ($professeur && $professeur->max_heures_mensuel) {
+            $debut = \Carbon\Carbon::parse($data['heure_debut'] ?? $emploi->heure_debut);
+            $fin = \Carbon\Carbon::parse($data['heure_fin'] ?? $emploi->heure_fin);
+            $dureeHeures = $debut->diffInMinutes($fin) / 60;
+            
+            $currentHeures = $professeur->getHeuresHebdomadairesActuelles($emploi->id);
+            if (($currentHeures + $dureeHeures) > $professeur->max_heures_mensuel) {
+                $maxFormatted = EmploiDuTemps::formatHeures($professeur->max_heures_mensuel);
+                $currentFormatted = EmploiDuTemps::formatHeures($currentHeures);
+                $dureeFormatted = EmploiDuTemps::formatHeures($dureeHeures);
+                
+                return back()->withErrors(['professeur_id' => "Ce professeur a atteint sa limite de {$maxFormatted}. (Charge actuelle: {$currentFormatted} + nouvelle séance: {$dureeFormatted} = " . EmploiDuTemps::formatHeures($currentHeures + $dureeHeures) . ")"])->withInput();
+            }
+        }
+
+        // Vérification de la limite de la masse horaire du module
+        $moduleId = $data['module_id'] ?? $emploi->module_id;
+        $groupeId = $data['groupe_id'] ?? $emploi->groupe_id;
+        $module = Module::find($moduleId);
+        if ($module && $module->masse_horaire) {
+            $debut = \Carbon\Carbon::parse($data['heure_debut'] ?? $emploi->heure_debut);
+            $fin = \Carbon\Carbon::parse($data['heure_fin'] ?? $emploi->heure_fin);
+            $dureeHeures = $debut->diffInMinutes($fin) / 60;
+            
+            // On exclut les séances liées à cet emploi car on teste la nouvelle durée
+            $heuresConsommees = $module->getHeuresTotalesByGroupe($groupeId, $emploi->id);
+            if (($heuresConsommees + $dureeHeures) > $module->masse_horaire) {
+                $totalFormatted = EmploiDuTemps::formatHeures($module->masse_horaire);
+                $consommeFormatted = EmploiDuTemps::formatHeures($heuresConsommees);
+                $nouvelleFormatted = EmploiDuTemps::formatHeures($dureeHeures);
+                
+                return back()->withErrors(['module_id' => "Le module {$module->nom} a atteint sa masse horaire limite de {$totalFormatted} pour ce groupe. (Déjà planifié/réalisé: {$consommeFormatted} + cette séance: {$nouvelleFormatted} = " . EmploiDuTemps::formatHeures($heuresConsommees + $dureeHeures) . ")"])->withInput();
+            }
+        }
+
         $emploi->update($data);
 
         if ($request->input('from_grille')) {
@@ -190,10 +289,10 @@ class EmploiDuTempsController extends Controller
             $emploi->professeur->user->notify(new \App\Notifications\GenericNotification("Votre demande d'annulation pour la séance du {$emploi->jour} ({$emploi->heure_debut}) a été APPROUVÉE."));
         }
 
-        // Notif Étudiants (seulement ceux qui ont un compte utilisateur)
         $etudiants = \App\Models\Etudiant::where('groupe_id', $emploi->groupe_id)
             ->whereNotNull('user_id')
-            ->get();
+            ->get()
+            ->unique('user_id');
             
         foreach ($etudiants as $etudiant) {
             if ($etudiant->user) {
@@ -409,28 +508,48 @@ class EmploiDuTempsController extends Controller
     public function getFilteredData(Request $request)
     {
         $groupeId = $request->get('groupe_id');
-        if (!$groupeId) return response()->json(['modules' => [], 'professeurs' => []]);
+        $moduleId = $request->get('module_id');
+        
+        $response = [
+            'modules' => [],
+            'professeurs' => []
+        ];
 
-        $groupe = Groupe::with('filiere')->find($groupeId);
-        if (!$groupe) return response()->json(['modules' => [], 'professeurs' => []]);
+        // 1. If group is selected, get modules for this group's filiere
+        if ($groupeId) {
+            $groupe = Groupe::with('filiere')->find($groupeId);
+            if ($groupe && $groupe->filiere) {
+                $response['modules'] = $groupe->filiere->modules()
+                    ->orderBy('nom')
+                    ->get(['modules.id', 'modules.code', 'modules.nom']);
+            }
+        }
 
-        // 1. Get modules for this filiere
-        $modules = $groupe->filiere->modules()->orderBy('nom')->get(['modules.id', 'modules.code', 'modules.nom']);
+        // 2. Filter Professors
+        $profQuery = Professeur::where('actif', true);
 
-        // 2. Get professors for these modules
-        $moduleIds = $modules->pluck('id');
-        $professeurs = Professeur::whereHas('modules', function($q) use ($moduleIds) {
-            $q->whereIn('modules.id', $moduleIds);
-        })->where('actif', true)->orderBy('nom')->orderBy('prenom')->get(['id', 'nom', 'prenom']);
+        if ($moduleId) {
+            // Filter by specific module
+            $profQuery->whereHas('modules', function($q) use ($moduleId) {
+                $q->where('modules.id', $moduleId);
+            });
+        } elseif ($groupeId && !empty($response['modules'])) {
+            // Fallback: Professors who can teach any module in this filiere
+            $moduleIds = $response['modules']->pluck('id');
+            $profQuery->whereHas('modules', function($q) use ($moduleIds) {
+                $q->whereIn('modules.id', $moduleIds);
+            });
+        }
 
-        return response()->json([
-            'modules' => $modules,
-            'professeurs' => $professeurs->map(function($p) {
-                return [
-                    'id' => $p->id,
-                    'nom_complet' => $p->nom_complet
-                ];
-            })
-        ]);
+        $professeurs = $profQuery->orderBy('nom')->orderBy('prenom')->get(['id', 'nom', 'prenom']);
+
+        $response['professeurs'] = $professeurs->map(function($p) {
+            return [
+                'id' => $p->id,
+                'nom_complet' => $p->nom_complet
+            ];
+        });
+
+        return response()->json($response);
     }
 }

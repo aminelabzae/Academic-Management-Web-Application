@@ -1,4 +1,4 @@
-﻿@extends('layouts.professeur')
+@extends('layouts.professeur')
 
 @section('title', 'Mon Tableau de Bord')
 
@@ -53,42 +53,59 @@
             <div class="card-body">
                 <div class="row">
                     @php
-                        $modulesProf = \App\Models\EmploiDuTemps::where('professeur_id', $professeur->id)
-                            ->with('module')
-                            ->get()
-                            ->pluck('module')
-                            ->unique('id');
+                        $modulesProf = $professeur->modules->load(['syllabusItems.realisations']);
                     @endphp
                     @forelse($modulesProf as $module)
-                        <div class="col-md-4 mb-3">
-                            <div class="p-3 border rounded bg-light">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="fw-bold">{{ $module->nom }}</span>
-                                    <span class="badge bg-primary">{{ $module->progress_syllabus }}%</span>
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-0 shadow-sm overflow-hidden">
+                                <div class="card-header bg-light border-0 py-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="fw-bold mb-0 text-dark">{{ $module->nom }}</h6>
+                                        <span class="badge rounded-pill bg-primary px-3">{{ $module->progress_syllabus }}%</span>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" 
+                                             style="width: {{ $module->progress_syllabus }}%" 
+                                             aria-valuenow="{{ $module->progress_syllabus }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
                                 </div>
-                                <div class="progress" style="height: 10px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
-                                         style="width: {{ $module->progress_syllabus }}%" 
-                                         aria-valuenow="{{ $module->progress_syllabus }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
+                                    <ul class="list-group list-group-flush small">
+                                        @forelse($module->syllabusItems as $item)
+                                            @php $isDone = $item->realisations->isNotEmpty(); @endphp
+                                            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3 {{ $isDone ? 'bg-success bg-opacity-10' : '' }}">
+                                                <div class="d-flex align-items-center">
+                                                    @if($isDone)
+                                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                                    @else
+                                                        <i class="bi bi-circle text-muted me-2"></i>
+                                                    @endif
+                                                    <span class="{{ $isDone ? 'text-success fw-medium text-decoration-line-through' : 'text-dark' }}">
+                                                        {{ $item->titre }}
+                                                    </span>
+                                                </div>
+                                                <span class="text-muted" style="font-size: 0.85em;">{{ $item->poids_pourcentage }}%</span>
+                                            </li>
+                                        @empty
+                                            <li class="list-group-item text-center text-muted py-4">
+                                                <i class="bi bi-info-circle me-1"></i> Aucun chapitre défini
+                                            </li>
+                                        @endforelse
+                                    </ul>
                                 </div>
-                                <div class="mt-2 d-flex justify-content-between align-items-center small text-muted">
-                                    <span>{{ $module->syllabusItems->count() }} chapitres définis</span>
-                                    @php
-                                        $heuresTotales = $module->max_heures_mensuel;
-                                        $heuresConsommees = $module->getHeuresMensuellesActuelles();
-                                    @endphp
-                                    @if($heuresTotales > 0 && ($heuresConsommees / $heuresTotales) >= 0.9)
-                                        <span class="badge bg-danger rounded-pill" title="Masse horaire presque épuisée">
-                                            <i class="bi bi-alarm pe-1"></i> {{ \App\Models\EmploiDuTemps::formatHeures($heuresConsommees) }} / {{ \App\Models\EmploiDuTemps::formatHeures($heuresTotales) }}
-                                        </span>
-                                    @elseif($heuresTotales > 0)
-                                        <span>{{ \App\Models\EmploiDuTemps::formatHeures($heuresConsommees) }} / {{ \App\Models\EmploiDuTemps::formatHeures($heuresTotales) }}</span>
-                                    @endif
+                                <div class="card-footer bg-white border-0 py-2 small text-muted">
+                                    <i class="bi bi-info-circle me-1"></i> 
+                                    {{ $module->syllabusItems->filter(fn($i) => $i->realisations->isNotEmpty())->count() }} / {{ $module->syllabusItems->count() }} chapitres complétés
                                 </div>
                             </div>
                         </div>
                     @empty
-                        <div class="col-12 text-center text-muted">Aucun module assigné avec syllabus.</div>
+                        <div class="col-12 text-center text-muted py-5">
+                            <div class="mb-3">
+                                <i class="bi bi-book fs-1 opacity-25"></i>
+                            </div>
+                            Aucun module n'est associé à votre compte.
+                        </div>
                     @endforelse
                 </div>
             </div>

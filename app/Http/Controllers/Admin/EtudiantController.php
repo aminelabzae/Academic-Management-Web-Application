@@ -20,13 +20,17 @@ class EtudiantController extends Controller
 
         $etudiants = Etudiant::with('groupe.filiere')
             ->when($search, function ($query) use ($search) {
-                $query->where('cef', 'like', '%' . $search . '%')
-                    ->orWhere('nom', 'like', '%' . $search . '%')
-                    ->orWhere('prenom', 'like', '%' . $search . '%')
-                    ->orWhere('email', 'like', '%' . $search . '%')
-                    ->orWhereHas('groupe', function ($q) use ($search) {
-                        $q->where('nom', 'like', '%' . $search . '%');
-                    });
+                $query->where(function($q) use ($search) {
+                    $q->where('cef', 'like', '%' . $search . '%')
+                        ->orWhere('nom', 'like', '%' . $search . '%')
+                        ->orWhere('prenom', 'like', '%' . $search . '%')
+                        ->orWhere('email', 'like', '%' . $search . '%')
+                        ->orWhereRaw('CONCAT(prenom, " ", nom) LIKE ?', ['%' . $search . '%'])
+                        ->orWhereRaw('CONCAT(nom, " ", prenom) LIKE ?', ['%' . $search . '%'])
+                        ->orWhereHas('groupe', function ($g) use ($search) {
+                            $g->where('nom', 'like', '%' . $search . '%');
+                        });
+                });
             })
             ->orderBy('created_at', 'desc')
             ->paginate(10);

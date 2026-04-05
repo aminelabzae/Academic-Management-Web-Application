@@ -71,18 +71,38 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label for="modules" class="form-label">Modules assignés</label>
-                            <select name="modules[]" id="modules" class="form-select" multiple size="5">
-                                @foreach($modules as $module)
-                                    <option value="{{ $module->id }}" {{ collect(old('modules'))->contains($module->id) ? 'selected' : '' }}>
-                                        [{{ $module->code }}] {{ $module->nom }}
-                                    </option>
+                            <select name="modules[]" id="modules" class="form-select" multiple>
+                                @php
+                                    $groupedModules = collect();
+                                    foreach($modules as $module) {
+                                        $modFilieres = $module->filieres ?? collect();
+                                        if($modFilieres->isEmpty()) {
+                                            $groupedModules->push(['filiere' => 'Modules Généraux / Sans Filière', 'module' => $module]);
+                                        } else {
+                                            foreach($modFilieres as $filiere) {
+                                                $groupedModules->push(['filiere' => $filiere->nom . ' (' . $filiere->code . ')', 'module' => $module]);
+                                            }
+                                        }
+                                    }
+                                    $allGroups = $groupedModules->groupBy('filiere');
+                                @endphp
+
+                                @foreach($allGroups as $filiereName => $items)
+                                    <optgroup label="{{ $filiereName }}">
+                                        @foreach($items as $item)
+                                            <option value="{{ $item['module']->id }}" 
+                                                {{ (collect(old('modules'))->contains($item['module']->id)) ? 'selected' : '' }}>
+                                                [{{ $item['module']->code }}] {{ $item['module']->nom }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
                                 @endforeach
                             </select>
-                            <small class="text-muted">Maintenez Ctrl pour en sélectionner plusieurs</small>
+                            <small class="text-muted">Sélection multiple supportée</small>
                         </div>
                         <div class="col-md-4">
                             <label for="groupes" class="form-label">Groupes assignés</label>
-                            <select name="groupes[]" id="groupes" class="form-select" multiple size="5">
+                            <select name="groupes[]" id="groupes" class="form-select" multiple>
                                 @foreach($groupes as $groupe)
                                     <option value="{{ $groupe->id }}" {{ collect(old('groupes'))->contains($groupe->id) ? 'selected' : '' }}>
                                         {{ $groupe->nom }} ({{ $groupe->filiere->code ?? 'N/A' }})
@@ -92,7 +112,7 @@
                         </div>
                         <div class="col-md-4">
                             <label for="filieres" class="form-label">Filières assignées</label>
-                            <select name="filieres[]" id="filieres" class="form-select" multiple size="5">
+                            <select name="filieres[]" id="filieres" class="form-select" multiple>
                                 @foreach($filieres as $filiere)
                                     <option value="{{ $filiere->id }}" {{ collect(old('filieres'))->contains($filiere->id) ? 'selected' : '' }}>
                                         {{ $filiere->nom }}
@@ -134,5 +154,47 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .select2-container--bootstrap-5 .select2-selection {
+        min-height: 38px;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 0 5px;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        background-color: var(--ofppt-blue);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 2px 8px;
+        margin: 4px 2px;
+    }
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+        color: white;
+        margin-right: 5px;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#modules, #groupes, #filieres').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Sélectionner...',
+            closeOnSelect: false
+        });
+    });
+</script>
+@endpush
 
 

@@ -24,30 +24,33 @@
                             <p><strong>Modifié le:</strong> {{ $professeur->updated_at->format('d/m/Y H:i') }}</p>
 
                             @php
-                                $heuresActuelles = $professeur->getHeuresMensuellesActuelles();
+                                $heuresHebdo = $professeur->getHeuresHebdomadairesActuelles();
+                                $heuresMensuelles = $heuresHebdo; // Synchronisation
                                 $maxHeures = $professeur->max_heures_mensuel;
-                                $pourcentage = $maxHeures ? round(($heuresActuelles / $maxHeures) * 100) : 0;
+                                $pourcentage = $maxHeures ? round(($heuresMensuelles / $maxHeures) * 100) : 0;
                             @endphp
 
-                            <p><strong><i class="bi bi-clock-history me-1"></i>Max heures / mois:</strong>
-                                {{ $maxHeures ? $maxHeures . 'h' : 'Pas de limite' }}
+                            <p><strong><i class="bi bi-clock me-1"></i>Charge Hebdomadaire:</strong>
+                                <span class="badge bg-primary fs-6">{{ \App\Models\EmploiDuTemps::formatHeures($heuresHebdo) }} / mois</span>
+                            </p>
+
+
+
+                            @php
+                                $heuresRealisees = $professeur->getHeuresMensuellesRealisees();
+                            @endphp
+                            <p><strong><i class="bi bi-check-circle me-1"></i>Heures Validées ce mois:</strong>
+                                <span class="badge bg-success">{{ \App\Models\EmploiDuTemps::formatHeures($heuresRealisees) }}</span>
                             </p>
 
                             @if($maxHeures)
-                                <p><strong>Heures utilisées:</strong></p>
+                                <label class="small text-muted mb-1">Consommation de la limite mensuelle ({{ $maxHeures }}h)</label>
                                 <div class="progress mb-2" style="height: 25px;">
                                     <div class="progress-bar {{ $pourcentage >= 90 ? 'bg-danger' : ($pourcentage >= 70 ? 'bg-warning' : 'bg-success') }}"
                                          role="progressbar" style="width: {{ min($pourcentage, 100) }}%">
-                                        {{ \App\Models\EmploiDuTemps::formatHeures($heuresActuelles) }} / {{ \App\Models\EmploiDuTemps::formatHeures($maxHeures) }} ({{ $pourcentage }}%)
+                                        {{ \App\Models\EmploiDuTemps::formatHeures($heuresMensuelles) }} / {{ $maxHeures }}h ({{ $pourcentage }}%)
                                     </div>
                                 </div>
-                                @if($pourcentage >= 90)
-                                    <div class="alert alert-danger py-1 px-2 mb-0">
-                                        <small><i class="bi bi-exclamation-triangle me-1"></i>Ce professeur est proche ou au-delà de sa limite d'heures!</small>
-                                    </div>
-                                @endif
-                            @else
-                                <p><strong>Heures actuelles:</strong> {{ \App\Models\EmploiDuTemps::formatHeures($heuresActuelles) }}/mois</p>
                             @endif
                         </div>
                     </div>

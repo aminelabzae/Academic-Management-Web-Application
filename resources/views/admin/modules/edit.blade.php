@@ -56,16 +56,11 @@
                                    value="{{ old('coefficient', $module->coefficient) }}" min="0" max="10" step="0.5">
                         </div>
                         <div class="col-md-6">
-                            <label for="max_heures_mensuel" class="form-label">
-                                <i class="bi bi-clock-history me-1"></i>Module heures
-                            </label>
-                            <input type="number" class="form-control @error('max_heures_mensuel') is-invalid @enderror"
-                                   id="max_heures_mensuel" name="max_heures_mensuel"
-                                   value="{{ old('max_heures_mensuel', $module->max_heures_mensuel) }}"
-                                   min="1" max="500"
-                                   placeholder="Ex: 20 (heures total par mois)">
-                            @error('max_heures_mensuel')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            <small class="text-muted">Nombre maximum d'heures autorisées par mois</small>
+                            <label for="masse_horaire" class="form-label">Masse Horaire (Total)</label>
+                            <input type="number" class="form-control @error('masse_horaire') is-invalid @enderror"
+                                   id="masse_horaire" name="masse_horaire"
+                                   value="{{ old('masse_horaire', $module->masse_horaire) }}" min="0">
+                            @error('masse_horaire')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
